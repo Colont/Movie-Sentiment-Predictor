@@ -1,13 +1,13 @@
 import tarfile
 import pandas as pd
 import torch
-from torch.nn.utils.rnn import pad_sequence
+import torch.nn.utils.rnn as rnn_utils
+import torch.nn.utils.rnn as rnn_utils
 from collections import Counter
 import spacy
 import os
 import torch.optim as optim
 import re
-from torch.utils.data import Dataset, DataLoader
 
 #Commented out code that created the parquet file as the runtime is very long, using parquet to made data
 #frames that run quick.
@@ -83,5 +83,16 @@ if __name__ == "__main__":
     df_train['review_length'] = df_train['tokenized_review'].apply(len)
     df_test['review_length'] = df_test['tokenized_review'].apply(len)
     max_length = int(df_train['review_length'].quantile(0.95))
-    print(max_length)
+
+    sequence_train = [torch.tensor(ids, dtype=torch.long) for ids in df_train['review_ids']]
+    sequence_test = [torch.tensor(ids, dtype=torch.long) for ids in df_test['review_ids']]
+
+    train_padded = rnn_utils.pad_sequence(sequence_train,
+                                                     batch_first=True,padding_value=0)
+    test_padded  = rnn_utils.pad_sequence(sequence_test,
+                                                    batch_first=True,padding_value=0)
+    
+    print(train_padded[0])
+    print(test_padded[0])
+    
    
