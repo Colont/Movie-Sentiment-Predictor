@@ -14,7 +14,15 @@ from torch.utils.data import Dataset, DataLoader
 
 #gz_path ='C:/Users/cjbea/Documents/GitHub/main/DS5110/imdb_reviews.gz'
 extract_path = 'C:/Users/cjbea/Documents/GitHub/main/DS5110/extraction'
-
+vocab_file = "C:/Users/cjbea/Documents/GitHub/main/DS5110/extraction/aclImdb/imdb.vocab"
+vocab = {}
+with open(vocab_file, 'r',encoding='latin-1') as file:
+    for idx, line in enumerate(file, start=1): 
+        word = line.strip()  
+        vocab[word] = idx
+def preprocess(text):
+    text = re.sub(r'<.*?>|/>|\\|[^\w\s]', ' ', text)
+    return re.sub(r'\s+', ' ', text.strip())
 '''
 with tarfile.open(gz_path, 'r:gz') as tar:
     tar.extractall(path=extract_path)
@@ -29,15 +37,20 @@ def load_data(folder, pos_neg):
     return data
 
 '''
-nlp = spacy.blank('en')
-def tokenize(text):
-    return [token.text for token in nlp(text)]
 
-def preprocess(text):
-    text = re.sub(r'<.*?>|/>|\\|[^\w\s]', ' ', text)
-    return re.sub(r'\s+', ' ', text.strip())
-def tokenize_and_remove_stopwords(text):
-    return [token.text for token in nlp(text) if not token.is_stop]
+nlp = spacy.blank('en')
+
+def tokenize_with_vocab(text, vocab):
+    
+    # Tokenize and filter in batches for better performance
+    tokenized_reviews = []
+    for doc in nlp.pipe(text, batch_size=1000, disable=["parser", "ner", "tagger"]):
+        tokens = [
+            token.text.lower() for token in doc
+            if token.text.lower() in vocab and not token.is_stop and not token.is_punct
+        ]
+        tokenized_reviews.append(tokens)
+    return tokenized_reviews
 
 if __name__ == "__main__":
     '''
@@ -49,41 +62,14 @@ if __name__ == "__main__":
     test_data = pd.DataFrame(test_pos + test_neg, columns=['review', 'label'])
     train_data.to_parquet('C:/Users/cjbea/Documents/GitHub/main/DS5110/train_data.parquet', engine='pyarrow')
     test_data.to_parquet('C:/Users/cjbea/Documents/GitHub/main/DS5110/test_data.parquet', engine='pyarrow')
+    
     '''
 
     df_test = pd.read_parquet('C:/Users/cjbea/Documents/GitHub/main/DS5110/test_data.parquet', engine='pyarrow') 
     df_train = pd.read_parquet('C:/Users/cjbea/Documents/GitHub/main/DS5110/train_data.parquet', engine='pyarrow')
-    df_train['review'] = df_train['review'].apply(preprocess)
-    df_test['review'] = df_test['review'].apply(preprocess)
-    '''
-    Receive number of tokens
-    '''
-    df_train['tokenized_review'] = [
-        [token.text for token in doc]  
-        for doc in nlp.pipe(df_train['review'], batch_size=1000)
-    ]
+    df_test['review']= df_test['review'].apply(preprocess)
+    df_train['review']=df_train['review'].apply(preprocess)
+    df_train['tokenized_review'] = tokenize_with_vocab(df_train['review'].values.tolist(), vocab)
+    df_test['tokenized_review'] = tokenize_with_vocab(df_test['review'].values.tolist(), vocab)
 
-    df_test['tokenized_review'] = [
-        [token.text for token in doc]  
-        for doc in nlp.pipe(df_test['review'], batch_size=1000)
-    ]
-    '''
-    Remove stop words
-    '''
-
-    df_train['tokenized_review'] = [
-        [token.text for token in doc if not token.is_stop]  
-        for doc in nlp.pipe(df_train['review'], batch_size=1000)
-    ]
-
-    df_test['tokenized_review'] = [
-        [token.text for token in doc if not token.is_stop]  
-        for doc in nlp.pipe(df_test['review'], batch_size=1000)
-    ]
-
-
-
-    all_tokens = [token for review in df_train['tokenized_review'] for token in review]
-    token_counts = Counter(all_tokens)
-    vocab = {word: i for i, (word,_) in enumerate(token_counts.most_common(10000), start=1)}
-    print(list(vocab.items())[:30])
+    print(df_train.columns)
