@@ -86,13 +86,13 @@ if __name__ == "__main__":
 
     sequence_train = [torch.tensor(ids, dtype=torch.long) for ids in df_train['review_ids']]
     sequence_test = [torch.tensor(ids, dtype=torch.long) for ids in df_test['review_ids']]
-
+    print(sequence_test)
     train_padded = rnn_utils.pad_sequence(sequence_train,
                                                      batch_first=True,padding_value=0)
     test_padded  = rnn_utils.pad_sequence(sequence_test,
                                                     batch_first=True,padding_value=0)
     
-    print(train_padded[0])
-    print(test_padded[0])
+    #print(train_padded[0])
+    #print(test_padded[0])
     
    
