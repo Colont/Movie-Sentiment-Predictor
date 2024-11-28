@@ -3,6 +3,7 @@ import pandas as pd
 import torch
 import torch.nn.utils.rnn as rnn_utils
 import torch.nn.utils.rnn as rnn_utils
+import torch.nn as nn
 from collections import Counter
 import spacy
 import os
@@ -86,12 +87,34 @@ if __name__ == "__main__":
 
     sequence_train = [torch.tensor(ids, dtype=torch.long) for ids in df_train['review_ids']]
     sequence_test = [torch.tensor(ids, dtype=torch.long) for ids in df_test['review_ids']]
-    print(sequence_test)
+  
     train_padded = rnn_utils.pad_sequence(sequence_train,
                                                      batch_first=True,padding_value=0)
     test_padded  = rnn_utils.pad_sequence(sequence_test,
                                                     batch_first=True,padding_value=0)
-    
+
+class RNN(nn.Module):
+    def __init__(self, vocab_size, embedding_dim, hidden_dim, output_dim):
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.rnn = nn.RNN(embedding_dim, hidden_dim)
+        self.fc = nn.Linear(hidden_dim, output_dim)
+    def forward(self, text):
+        embedded = self.embedding(text)
+        output, hidden = self.rnn(embedded)
+        
+        
+        return self.fc(hidden)
+    batch_size = 32
+    seq_len = 50
+    vocab_size = 1000
+    embedding_dim = 100
+    hidden_dim = 128
+    output_dim = 2
+model = RNN(vocab_size, embedding_dim, hidden_dim, output_dim)
+input_data = torch.randint(0, vocab_size, (batch_size, seq_len))
+output = model(input_data)
+print(output.shape)
     #print(train_padded[0])
     #print(test_padded[0])
     
